@@ -6,56 +6,49 @@
 <title>probe</title>
 <style>
   html,body{margin:0;padding:0;background:#fff;color:#000}
-  body{font-family:Georgia,"Times New Roman",serif;font-size:24px;
-       line-height:1.5;padding:32px;-webkit-text-size-adjust:100%}
-  h1{font-size:38px;margin:0 0 6px 0}
-  .ua{font-size:18px;color:#000;background:#eee;padding:12px;
-      word-wrap:break-word;border:1px solid #000;margin:14px 0}
-  table{border-collapse:collapse;width:100%;font-size:24px}
-  td{border-bottom:1px solid #999;padding:10px 6px;vertical-align:top}
-  td.v{text-align:right;font-weight:bold;white-space:nowrap}
-  .yes{}
-  .no{color:#777}
-  .note{font-size:18px;color:#555;margin-top:20px}
+  body{font-family:Georgia,serif;font-size:22px;padding:28px;-webkit-text-size-adjust:100%}
+  h1{font-size:34px;margin:0 0 10px 0}
+  pre{font-family:"Courier New",monospace;font-size:20px;line-height:1.45;
+      white-space:pre-wrap;word-wrap:break-word;background:#eee;
+      border:1px solid #000;padding:14px;margin:0}
+  p{font-size:17px;color:#555}
 </style>
 </head>
 <body>
-  <h1>Kindle capability probe</h1>
-  <div class="ua" id="ua">user-agent: &hellip;</div>
-  <table id="t"></table>
-  <p class="note">Read this aloud / type the YES rows back. The User-Agent line
-  is the most important &mdash; it identifies the browser engine.</p>
+<h1>Kindle capability probe</h1>
+<pre id="out">running...</pre>
+<p>Type back every line. "YES/no" is real presence; "[type]" is what the
+browser actually exposes &mdash; that's the unambiguous part.</p>
 
 <script>
-/* ES5 only. Each test is wrapped so one failure can't blank the page. */
-function has(fn){ try { return !!fn(); } catch(e){ return false; } }
+/* ES5. Render as plain text in a <pre> via a text node: the most robust
+   path on ancient WebKit (no innerHTML-into-<table> fragment quirks). */
+function present(v){ return (typeof v !== "undefined") && v !== null && v !== false; }
 
-var tests = [
-  ["XMLHttpRequest (polling fallback)", function(){ return window.XMLHttpRequest; }],
-  ["fetch()",                            function(){ return window.fetch; }],
-  ["WebSocket",                          function(){ return window.WebSocket || window.MozWebSocket; }],
-  ["EventSource (server-sent events)",   function(){ return window.EventSource; }],
-  ["RTCPeerConnection (WebRTC)",         function(){ return window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection; }],
-  ["DataChannel (WebRTC)",               function(){ var P=window.RTCPeerConnection||window.webkitRTCPeerConnection; return P && new P({}).createDataChannel; }],
-  ["JSON",                               function(){ return window.JSON && JSON.parse; }],
-  ["Promise",                            function(){ return window.Promise; }],
-  ["localStorage",                       function(){ return window.localStorage; }],
-  ["addEventListener",                   function(){ return window.addEventListener; }],
-  ["querySelector",                      function(){ return document.querySelector; }],
-  ["navigator.onLine",                   function(){ return ("onLine" in navigator); }]
-];
+var lines = [];
+lines.push("user-agent:");
+lines.push("  " + (navigator.userAgent || "(none)"));
+lines.push("");
 
-var ua = navigator.userAgent || "(none)";
-document.getElementById("ua").firstChild.nodeValue = "user-agent: " + ua;
-
-var rows = "";
-for (var i = 0; i < tests.length; i++) {
-  var ok = has(tests[i][1]);
-  rows += '<tr><td>' + tests[i][0] + '</td>'
-        + '<td class="v ' + (ok ? "yes" : "no") + '">'
-        + (ok ? "YES" : "no") + '</td></tr>';
+function row(name, val){
+  lines.push((present(val) ? "YES " : " no ") + name + "  [" + (typeof val) + "]");
 }
-document.getElementById("t").innerHTML = rows;
+
+row("XMLHttpRequest", window.XMLHttpRequest);
+row("fetch",          window.fetch);
+row("Promise",        window.Promise);
+row("WebSocket",      window.WebSocket || window.MozWebSocket);
+row("EventSource",    window.EventSource);
+row("RTCPeerConnection", window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection);
+row("JSON.parse",     (window.JSON && JSON.parse));
+row("localStorage",   window.localStorage);
+row("addEventListener", window.addEventListener);
+row("querySelector",  document.querySelector);
+row("onLine",         (("onLine" in navigator) ? navigator.onLine : undefined));
+
+var out = document.getElementById("out");
+while (out.firstChild) { out.removeChild(out.firstChild); }
+out.appendChild(document.createTextNode(lines.join("\n")));
 </script>
 </body>
 </html>
