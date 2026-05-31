@@ -1,56 +1,20 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>kindle</title>
-<style>
-  /* e-ink: pure black on white, big serif, block layout only (no flex/grid) */
-  html, body { margin: 0; padding: 0; background: #fff; color: #000; }
-  body {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 26px;
-    line-height: 1.5;
-    padding: 40px;
-    -webkit-text-size-adjust: 100%;
-  }
-  h1 { font-size: 44px; margin: 0 0 8px 0; }
-  .muted { color: #555; }
-  hr { border: 0; border-top: 2px solid #000; margin: 28px 0; }
-  .clock { font-size: 64px; font-weight: bold; margin: 12px 0; }
-  .date { font-size: 30px; }
-  .foot { font-size: 20px; margin-top: 40px; }
-</style>
-</head>
-<body>
-  <h1>It works.</h1>
-  <p class="muted">Served from GitHub Pages to the Kindle browser.</p>
-
-  <hr>
-
-  <div class="clock" id="clock">--:--</div>
-  <div class="date" id="date">&nbsp;</div>
-
-  <p class="foot muted">
-    neves.cloud/kindle &middot; refreshes every 60s
-  </p>
-
-<script>
-  // ES5-only. Old WebKit on Kindle does not guarantee ES6.
-  function pad(n) { return (n < 10 ? '0' : '') + n; }
-  function render() {
-    var d = new Date();
-    var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    var mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    document.getElementById('clock').firstChild.nodeValue =
-      pad(d.getHours()) + ':' + pad(d.getMinutes());
-    document.getElementById('date').firstChild.nodeValue =
-      days[d.getDay()] + ' ' + d.getDate() + ' ' + mon[d.getMonth()] + ' ' + d.getFullYear();
-  }
-  render();
-  // Full reload once a minute: forces a clean e-ink repaint instead of
-  // ghosty partial DOM updates, and picks up any new deploy.
-  setTimeout(function () { window.location.reload(true); }, 60000);
-</script>
-</body>
-</html>
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>read</title><style>
+  html,body{margin:0;padding:0;background:#fff;color:#000}
+  body{font-family:Georgia,"Times New Roman",serif;font-size:26px;
+       line-height:1.55;padding:40px;-webkit-text-size-adjust:100%}
+  a{color:#000}
+  h1{font-size:42px;line-height:1.2;margin:0 0 6px 0}
+  .site{font-size:20px;color:#555}
+  hr{border:0;border-top:2px solid #000;margin:26px 0}
+  /* list */
+  .item{display:block;border-bottom:1px solid #999;padding:22px 0;text-decoration:none}
+  .item .t{font-size:30px;font-weight:bold}
+  .item .m{font-size:19px;color:#555;margin-top:4px}
+  .empty{color:#555}
+  /* article */
+  article{font-size:27px}
+  article p{margin:0 0 1em 0}
+  article img{max-width:100%;height:auto}
+  .nav{font-size:20px;margin-bottom:24px}
+  .foot{font-size:18px;color:#555;margin-top:48px}
+</style></head><body><h1>read</h1><div class=site>neves.cloud/kindle &middot; 2 saved</div><hr><a class=item href="a/how-to-be-successful-0531.html"><div class=t>How To Be Successful</div><div class=m>Sam Altman &middot; 2026-05-31</div></a><a class=item href="a/e-reader-wikipedia-0531.html"><div class=t>E-reader - Wikipedia</div><div class=m>Wikimedia Foundation, Inc. &middot; 2026-05-31</div></a></body></html>
