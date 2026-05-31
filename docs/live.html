@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>live · kindle</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff;color:#000}
+  body{font-family:Georgia,"Times New Roman",serif;font-size:26px;line-height:1.55;
+       padding:34px;-webkit-text-size-adjust:100%}
+  #bar{position:fixed;top:0;left:0;right:0;background:#000;color:#fff;
+       font-family:"Courier New",monospace;font-size:15px;padding:6px 10px}
+  #view{margin-top:38px}
+  #view h1,#view h2,#view h3{line-height:1.2;margin:.4em 0 .3em}
+  #view p{margin:0 0 1em 0}
+  #view img{max-width:100%;height:auto}
+  .muted{color:#666}
+</style>
+</head>
+<body>
+<div id="bar">connecting&hellip;</div>
+<article id="view">
+  <p class="muted">Waiting for a cast. On your computer open
+  <b>neves.cloud/kindle/cast.html</b> and start typing &mdash; or run the
+  bookmarklet on any tab. This page stays open and updates live.</p>
+</article>
+<script type="module">
+import { join } from 'https://cdn.jsdelivr.net/npm/@jonasneves/pip-relay@0.10.0/docs/transport.esm.js';
+
+const SITE_ID = 'kindle-' + (new URL(location).searchParams.get('s') || 'live');
+const bar  = document.getElementById('bar');
+const view = document.getElementById('view');
+
+let last = null;
+function show(html){ if (html === last) return; last = html; view.innerHTML = html || '<p class="muted">(empty)</p>'; }
+function setbar(t){ bar.textContent = t; }
+
+let connecting = false, stop = false;
+async function connect(){
+  if (connecting) return;
+  connecting = true;
+  try {
+    setbar('pairing · ' + SITE_ID + ' …');
+    const session = await join({ siteId: SITE_ID });
+    session.onMessage((msg) => {
+      if (msg && msg.kind === 'content'){ show(msg.html); setbar('● live · ' + SITE_ID); }
+    });
+    session.onClose(() => {
+      connecting = false;
+      setbar('caster left · reconnecting…');
+      if (!stop) setTimeout(connect, 2500);
+    });
+    await session.ready;
+    setbar('connected · ' + SITE_ID + ' · waiting for content');
+  } catch (err) {
+    connecting = false;
+    setbar('no caster yet · retrying…');
+    if (!stop) setTimeout(connect, 3000);
+  }
+}
+connect();
+</script>
+</body>
+</html>
