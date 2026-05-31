@@ -79,7 +79,7 @@ def build():
     # per-article reader pages
     for a in arts:
         body = (
-            '<div class=nav><a href="../index.html">&larr; reading list</a></div>'
+            '<div class=nav><a href="../index.html?app=reader">&larr; reading list</a></div>'
             "<h1>" + html.escape(a["title"]) + "</h1>"
             '<div class=site>' + html.escape(a.get("site", "")) + "</div>"
             "<hr><article>" + a.get("html", "") + "</article>"
@@ -104,11 +104,12 @@ def build():
 
     body = (
         "<h1>read</h1>"
-        '<div class=site>neves.cloud/kindle &middot; ' + str(len(arts)) + " saved</div>"
+        '<div class=site>neves.cloud/kindle &middot; ' + str(len(arts)) +
+        ' saved &middot; <a href="live.html">&#128225; live mirror</a></div>'
         "<hr>" + rows
     )
     with open(os.path.join(ROOT, "docs", "index.html"), "w", encoding="utf-8") as f:
-        f.write(page("read", body))
+        f.write(page("read", body, head_extra=DISPATCH))
 
     print("built: %d article(s)" % len(arts))
 
