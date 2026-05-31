@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>probe</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff;color:#000}
+  body{font-family:Georgia,"Times New Roman",serif;font-size:24px;
+       line-height:1.5;padding:32px;-webkit-text-size-adjust:100%}
+  h1{font-size:38px;margin:0 0 6px 0}
+  .ua{font-size:18px;color:#000;background:#eee;padding:12px;
+      word-wrap:break-word;border:1px solid #000;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:24px}
+  td{border-bottom:1px solid #999;padding:10px 6px;vertical-align:top}
+  td.v{text-align:right;font-weight:bold;white-space:nowrap}
+  .yes{}
+  .no{color:#777}
+  .note{font-size:18px;color:#555;margin-top:20px}
+</style>
+</head>
+<body>
+  <h1>Kindle capability probe</h1>
+  <div class="ua" id="ua">user-agent: &hellip;</div>
+  <table id="t"></table>
+  <p class="note">Read this aloud / type the YES rows back. The User-Agent line
+  is the most important &mdash; it identifies the browser engine.</p>
+
+<script>
+/* ES5 only. Each test is wrapped so one failure can't blank the page. */
+function has(fn){ try { return !!fn(); } catch(e){ return false; } }
+
+var tests = [
+  ["XMLHttpRequest (polling fallback)", function(){ return window.XMLHttpRequest; }],
+  ["fetch()",                            function(){ return window.fetch; }],
+  ["WebSocket",                          function(){ return window.WebSocket || window.MozWebSocket; }],
+  ["EventSource (server-sent events)",   function(){ return window.EventSource; }],
+  ["RTCPeerConnection (WebRTC)",         function(){ return window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection; }],
+  ["DataChannel (WebRTC)",               function(){ var P=window.RTCPeerConnection||window.webkitRTCPeerConnection; return P && new P({}).createDataChannel; }],
+  ["JSON",                               function(){ return window.JSON && JSON.parse; }],
+  ["Promise",                            function(){ return window.Promise; }],
+  ["localStorage",                       function(){ return window.localStorage; }],
+  ["addEventListener",                   function(){ return window.addEventListener; }],
+  ["querySelector",                      function(){ return document.querySelector; }],
+  ["navigator.onLine",                   function(){ return ("onLine" in navigator); }]
+];
+
+var ua = navigator.userAgent || "(none)";
+document.getElementById("ua").firstChild.nodeValue = "user-agent: " + ua;
+
+var rows = "";
+for (var i = 0; i < tests.length; i++) {
+  var ok = has(tests[i][1]);
+  rows += '<tr><td>' + tests[i][0] + '</td>'
+        + '<td class="v ' + (ok ? "yes" : "no") + '">'
+        + (ok ? "YES" : "no") + '</td></tr>';
+}
+document.getElementById("t").innerHTML = rows;
+</script>
+</body>
+</html>
