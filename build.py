@@ -39,10 +39,25 @@ CSS = """
   .foot{font-size:18px;color:#555;margin-top:48px}
 """
 
-def page(title, body):
+# Device dispatcher — injected ONLY into index.html. Runs before render:
+#   ?app=reader|cast|live  overrides on any device (escape hatch / testing)
+#   else  non-Kindle -> cast.html ;  Kindle -> stay here (the reader)
+DISPATCH = (
+    "<script>(function(){try{"
+    "var a=new URL(location).searchParams.get('app');"
+    "var u=navigator.userAgent||'';var k=/Kindle/.test(u)&&!/Silk/.test(u);"
+    "if(a==='cast'){location.replace('cast.html');return;}"
+    "if(a==='live'){location.replace('live.html');return;}"
+    "if(a==='reader'){return;}"
+    "if(!k){location.replace('cast.html');}"
+    "}catch(e){}})();</script>"
+)
+
+def page(title, body, head_extra=""):
     return (
         "<!doctype html><html lang=en><head><meta charset=utf-8>"
         '<meta name=viewport content="width=device-width,initial-scale=1">'
+        + head_extra +
         "<title>" + html.escape(title) + "</title><style>" + CSS +
         "</style></head><body>" + body + "</body></html>\n"
     )

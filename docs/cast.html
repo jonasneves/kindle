@@ -53,7 +53,7 @@
 <div id="bridgeui" class="bridge" style="display:none"></div>
 
 <script type="module">
-import { host } from 'https://cdn.jsdelivr.net/npm/@jonasneves/pip-relay@0.10.0/docs/transport.esm.js';
+import { host } from './vendor/transport.kindle.js';
 
 const params  = new URL(location).searchParams;
 const ROOM    = params.get('s') || 'live';
