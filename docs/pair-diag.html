@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pair diagnostic</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff;color:#000}
+  body{font-family:Georgia,serif;font-size:21px;padding:22px;-webkit-text-size-adjust:100%}
+  h1{font-size:28px;margin:0 0 8px 0}
+  pre{font-family:"Courier New",monospace;font-size:17px;line-height:1.5;
+      white-space:pre-wrap;word-wrap:break-word;background:#eee;border:1px solid #000;padding:12px;margin:0}
+  p{font-size:15px;color:#555}
+</style>
+</head>
+<body>
+<h1>pair diagnostic</h1>
+<pre id="out">starting…</pre>
+<p>Type back every line. The "transport import" line is the verdict.</p>
+<script>
+/* ES5 only — no optional chaining in THIS file. */
+var lines = [];
+function log(s){ lines.push(s); document.getElementById("out").textContent = lines.join("\n"); }
+window.onerror = function(m){ log("window.onerror: " + m); };
+window.addEventListener("unhandledrejection", function(e){
+  log("unhandled reject: " + ((e.reason && e.reason.message) || e.reason || "?"));
+});
+
+/* 1) Can the engine PARSE optional chaining? (transport uses ?. 6x) */
+try { var f = new Function("var o={a:{b:5}};return o?.a?.b;"); log("optional-chaining ?. : OK (" + f() + ")"); }
+catch (e) { log("optional-chaining ?. : SYNTAX ERROR — " + e.message); }
+
+/* 2) nullish coalescing */
+try { var g = new Function("return (null ?? 9);"); log("nullish ??          : OK (" + g() + ")"); }
+catch (e) { log("nullish ??          : SYNTAX ERROR — " + e.message); }
+
+/* 3) Actually import the real transport and report success or the exact error */
+log("importing transport…");
+var imp = new Function("u", "return import(u);");
+imp("https://cdn.jsdelivr.net/npm/@jonasneves/pip-relay@0.10.0/docs/transport.esm.js")
+  .then(function(m){
+    var keys = []; for (var k in m){ keys.push(k); }
+    log("transport import     : OK — exports: " + keys.join(", "));
+  })
+  .catch(function(e){
+    log("transport import     : FAILED — " + (e && e.message || e));
+  });
+</script>
+</body>
+</html>
