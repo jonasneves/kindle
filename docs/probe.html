@@ -3,52 +3,108 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>probe</title>
+<title>probe v2 — functional</title>
 <style>
   html,body{margin:0;padding:0;background:#fff;color:#000}
-  body{font-family:Georgia,serif;font-size:22px;padding:28px;-webkit-text-size-adjust:100%}
-  h1{font-size:34px;margin:0 0 10px 0}
-  pre{font-family:"Courier New",monospace;font-size:20px;line-height:1.45;
+  body{font-family:Georgia,serif;font-size:21px;padding:24px;-webkit-text-size-adjust:100%}
+  h1{font-size:30px;margin:0 0 8px 0}
+  pre{font-family:"Courier New",monospace;font-size:18px;line-height:1.5;
       white-space:pre-wrap;word-wrap:break-word;background:#eee;
       border:1px solid #000;padding:14px;margin:0}
-  p{font-size:17px;color:#555}
+  p{font-size:16px;color:#555}
 </style>
 </head>
+<!-- ES-module execution test: if the engine runs this, it flips the flag. -->
+<script type="module">window.__esm_module_ran = true;</script>
 <body>
-<h1>Kindle capability probe</h1>
-<pre id="out">running...</pre>
-<p>Type back every line. "YES/no" is real presence; "[type]" is what the
-browser actually exposes &mdash; that's the unambiguous part.</p>
+<h1>probe v2 — does it actually work?</h1>
+<pre id="out">starting tests...</pre>
+<p>These EXERCISE each API (not just check it exists). Wait ~10s for all
+lines to settle, then type them back. The WebRTC + module lines decide
+whether the radchat/ccw stack can run here.</p>
 
 <script>
-/* ES5. Render as plain text in a <pre> via a text node: the most robust
-   path on ancient WebKit (no innerHTML-into-<table> fragment quirks). */
-function present(v){ return (typeof v !== "undefined") && v !== null && v !== false; }
+var S = {
+  ua:        navigator.userAgent || "(none)",
+  module:    "...testing <script type=module>",
+  dimport:   "...testing dynamic import()",
+  webrtc:    "...testing RTCPeerConnection + ICE",
+  ws:        "...testing WebSocket (wss echo)",
+  fetchcors: "...testing fetch() + CORS"
+};
+function render(){
+  var L = [
+    "user-agent:",
+    "  " + S.ua, "",
+    "[module ] " + S.module,
+    "[import ] " + S.dimport,
+    "[webrtc ] " + S.webrtc,
+    "[websock] " + S.ws,
+    "[fetch  ] " + S.fetchcors
+  ];
+  var o = document.getElementById("out");
+  o.textContent = L.join("\n");
+}
+function set(k, v){ S[k] = v; render(); }
+render();
 
-var lines = [];
-lines.push("user-agent:");
-lines.push("  " + (navigator.userAgent || "(none)"));
-lines.push("");
+/* 1. ES module execution (deferred — check shortly after parse) */
+setTimeout(function(){
+  set("module", window.__esm_module_ran ? "YES — <script type=module> executed"
+                                        : "NO — type=module did NOT run");
+}, 600);
 
-function row(name, val){
-  lines.push((present(val) ? "YES " : " no ") + name + "  [" + (typeof val) + "]");
+/* 2. dynamic import() — wrap in Function so a parse error can't kill the page */
+try {
+  var dynImport = new Function("u", "return import(u)");
+  dynImport("data:text/javascript,export default 42")
+    .then(function(m){ set("dimport", "YES — dynamic import() works (got " + m.default + ")"); })
+    .catch(function(e){ set("dimport", "NO — import() rejected: " + e); });
+} catch (e) {
+  set("dimport", "NO — import() is a syntax error here");
 }
 
-row("XMLHttpRequest", window.XMLHttpRequest);
-row("fetch",          window.fetch);
-row("Promise",        window.Promise);
-row("WebSocket",      window.WebSocket || window.MozWebSocket);
-row("EventSource",    window.EventSource);
-row("RTCPeerConnection", window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection);
-row("JSON.parse",     (window.JSON && JSON.parse));
-row("localStorage",   window.localStorage);
-row("addEventListener", window.addEventListener);
-row("querySelector",  document.querySelector);
-row("onLine",         (("onLine" in navigator) ? navigator.onLine : undefined));
+/* 3. WebRTC: construct, open a data channel, gather an ICE candidate */
+try {
+  var pc = new (window.RTCPeerConnection || window.webkitRTCPeerConnection)(
+    { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+  pc.createDataChannel("probe");
+  var gotCand = false;
+  pc.onicecandidate = function(e){
+    if (e.candidate && !gotCand) {
+      gotCand = true;
+      var parts = ("" + e.candidate.candidate).split(" ");
+      set("webrtc", "YES — data channel + ICE candidate (" + (parts[7] || parts[4] || "?") + ")");
+    }
+  };
+  pc.createOffer().then(function(o){ return pc.setLocalDescription(o); })
+    .then(function(){ if (!gotCand) set("webrtc", "offer created, gathering ICE..."); })
+    .catch(function(err){ set("webrtc", "FAIL createOffer: " + err); });
+  setTimeout(function(){ if (!gotCand) set("webrtc", "API works but NO ICE in 9s (UDP blocked?)"); }, 9000);
+} catch (e) {
+  set("webrtc", "FAIL construct: " + e);
+}
 
-var out = document.getElementById("out");
-while (out.firstChild) { out.removeChild(out.firstChild); }
-out.appendChild(document.createTextNode(lines.join("\n")));
+/* 4. WebSocket: connect to an echo server, send + receive */
+try {
+  var ws = new WebSocket("wss://echo.websocket.events");
+  var wt = setTimeout(function(){ set("ws", "TIMEOUT — no open in 9s"); try{ws.close();}catch(_){} }, 9000);
+  ws.onopen    = function(){ set("ws", "open — sending..."); try{ws.send("ping");}catch(_){} };
+  ws.onmessage = function(m){ clearTimeout(wt); set("ws", "YES — echo: " + String(m.data).slice(0, 24)); try{ws.close();}catch(_){} };
+  ws.onerror   = function(){ clearTimeout(wt); set("ws", "ERROR — connection failed"); };
+} catch (e) {
+  set("ws", "FAIL: " + e);
+}
+
+/* 5. fetch() + cross-origin CORS */
+try {
+  fetch("https://api.github.com/zen", { mode: "cors" })
+    .then(function(r){ return r.text(); })
+    .then(function(t){ set("fetchcors", 'YES — CORS ok: "' + t.slice(0, 28) + '"'); })
+    .catch(function(e){ set("fetchcors", "FAIL: " + e); });
+} catch (e) {
+  set("fetchcors", "FAIL: " + e);
+}
 </script>
 </body>
 </html>
