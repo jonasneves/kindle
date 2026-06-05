@@ -1,28 +1,42 @@
 # kindle
 
-A git-backed read-later for the Kindle experimental browser. Live at **neves.cloud/kindle**.
+A serverless read-later for the Kindle experimental browser — the repo is the
+database, GitHub Pages is the host, and a WebRTC side-channel lets a laptop tab
+stream straight to the device. Live at **neves.cloud/kindle**.
 
-Wallabag-shaped, but with no server — GitHub Pages is the host, the repo is the database.
+Two ways to put text on the Kindle:
 
 ```
-save:   kindle-add <url>     fetch -> extract -> docs/a/<slug>.json -> build -> commit -> push
-build:  build.py             docs/a/*.json  ->  docs/index.html + docs/a/<slug>.html
-read:   Kindle browser       Menu (⋮) -> Web Browser -> neves.cloud/kindle
+durable   kindle-add <url>   fetch -> extract -> docs/a/<slug>.json -> build.py -> commit -> push
+          (~1 min Pages rebuild; saved forever, reread anytime)
+
+live      cast.html (laptop) ==WebRTC==> live.html (Kindle)
+          (type/paste, or a bookmarklet mirrors any tab; updates in ~1s, nothing saved)
 ```
 
-## Use
+`docs/index.html` dispatches by user-agent: a Kindle stays on the reading list,
+any other browser is sent to `cast.html`. Override with `?app=reader|cast|live`.
+
+## Save an article
 ```sh
 bin/kindle-add https://example.com/some-article     # live in ~1 min
 bin/kindle-add <url> --no-push                       # build locally only
 ```
-"Real-time" = push-to-live latency (~1 min Pages rebuild). You change *what you read*
-from your laptop; reload on the Kindle to see it. No always-on server.
+You change *what you read* from your laptop; reload on the Kindle to see it.
+`trafilatura` extracts the article to markdown, then to minimal `<p>/<h2>/<a>` HTML.
+
+## Cast a tab live
+Open `cast.html` on a laptop, type (or drag its bookmarklet onto any page to
+mirror that tab); `live.html` on the Kindle receives it over a WebRTC data
+channel. Signaling via `signal.neevs.io`; transport vendored as
+`docs/vendor/transport.kindle.js` (ES2017 — the Kindle can't parse `?.`/`??`).
+Append `?s=<secret>` to both URLs for a private room.
 
 ## Constraints (why it's built this way)
-- **Static only** — GitHub Pages can't run Wallabag (PHP + DB). Repo *is* the store.
-- **~2012 WebKit** — pages are server-rendered static HTML, ES5, no fetch/CORS, no flex/grid.
-- **E-ink** — pure black/white, large serif, block layout, justified paragraphs.
+- **Static only** — no server to run; the repo *is* the store, Pages serves it.
+- **~2012 WebKit** — server-rendered static HTML, no flex/grid; live JS stays ES2017-safe.
+- **E-ink** — black/white, large serif, block layout, justified paragraphs.
 - **Subpath** — served under `/kindle/`, so asset links stay **relative**.
-- Extraction: `trafilatura` -> markdown -> minimal clean HTML (`<p>/<h2>/<a>`).
 
 `docs/index.html` and `docs/a/*.html` are generated — never hand-edit; run `build.py`.
+`docs/probe.html` and `docs/pair-diag.html` are throwaway WebRTC diagnostics.
