@@ -35,29 +35,18 @@ CSS = """
   article{font-size:27px}
   article p{margin:0 0 1em 0}
   article img{max-width:100%;height:auto}
+  article h2,article h3,article h4{font-weight:bold;line-height:1.25;margin:1.1em 0 .25em}
+  article h2{font-size:32px}
+  article h3{font-size:29px}
+  article h4{font-size:27px}
   .nav{font-size:20px;margin-bottom:24px}
   .foot{font-size:18px;color:#555;margin-top:48px}
 """
 
-# Device dispatcher — injected ONLY into index.html. Runs before render:
-#   ?app=reader|cast|live  overrides on any device (escape hatch / testing)
-#   else  non-Kindle -> cast.html ;  Kindle -> stay here (the reader)
-DISPATCH = (
-    "<script>(function(){try{"
-    "var a=new URL(location).searchParams.get('app');"
-    "var u=navigator.userAgent||'';var k=/Kindle/.test(u)&&!/Silk/.test(u);"
-    "if(a==='cast'){location.replace('cast.html');return;}"
-    "if(a==='live'){location.replace('live.html');return;}"
-    "if(a==='reader'){return;}"
-    "if(!k){location.replace('cast.html');}"
-    "}catch(e){}})();</script>"
-)
-
-def page(title, body, head_extra=""):
+def page(title, body):
     return (
         "<!doctype html><html lang=en><head><meta charset=utf-8>"
         '<meta name=viewport content="width=device-width,initial-scale=1">'
-        + head_extra +
         "<title>" + html.escape(title) + "</title><style>" + CSS +
         "</style></head><body>" + body + "</body></html>\n"
     )
@@ -78,13 +67,14 @@ def build():
 
     # per-article reader pages
     for a in arts:
+        url = a.get("url", "")
+        src = ('<a href="' + html.escape(url) + '">source</a> &middot; ') if url else ""
         body = (
-            '<div class=nav><a href="../index.html?app=reader">&larr; reading list</a></div>'
+            '<div class=nav><a href="../index.html">&larr; reading list</a></div>'
             "<h1>" + html.escape(a["title"]) + "</h1>"
             '<div class=site>' + html.escape(a.get("site", "")) + "</div>"
             "<hr><article>" + a.get("html", "") + "</article>"
-            '<div class=foot><a href="' + html.escape(a.get("url", "")) +
-            '">source</a> &middot; saved ' + html.escape(a.get("added", "")[:10]) + "</div>"
+            '<div class=foot>' + src + "saved " + html.escape(a.get("added", "")[:10]) + "</div>"
         )
         with open(os.path.join(ADIR, a["slug"] + ".html"), "w", encoding="utf-8") as f:
             f.write(page(a["title"], body))
@@ -104,12 +94,11 @@ def build():
 
     body = (
         "<h1>read</h1>"
-        '<div class=site>neves.cloud/kindle &middot; ' + str(len(arts)) +
-        ' saved &middot; <a href="live.html">&#128225; live mirror</a></div>'
+        '<div class=site>neves.cloud/kindle &middot; ' + str(len(arts)) + " saved</div>"
         "<hr>" + rows
     )
     with open(os.path.join(ROOT, "docs", "index.html"), "w", encoding="utf-8") as f:
-        f.write(page("read", body, head_extra=DISPATCH))
+        f.write(page("read", body))
 
     print("built: %d article(s)" % len(arts))
 

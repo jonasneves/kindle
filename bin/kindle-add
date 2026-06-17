@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Save an article to the Kindle reading list.
 
-    kindle-add <url> [--no-push]
+    kindle-add <url> [--no-push]                       # fetch + extract a web page
+    kindle-add --stdin --title T [--site S] [--no-push] # pipe markdown in
+    kindle-add --md FILE [--title T] [--site S] [--no-push]
 
-Fetches the page, extracts clean article text, writes docs/a/<slug>.json,
-rebuilds the static site, commits, and pushes. Live at neves.cloud/kindle
-in ~1 min (GitHub Pages rebuild). That push-to-live latency IS the
-"real-time" here -- no server to run.
+The URL form fetches and extracts a page; the text forms take markdown you
+already have (a session answer, a draft) and skip the fetch. All three write
+docs/a/<slug>.json, rebuild the static site, commit, and push. Live at
+neves.cloud/kindle in ~1 min (GitHub Pages rebuild). That push-to-live latency
+IS the "real-time" here -- no server to run.
 """
 import html as htmlmod
 import json
@@ -67,20 +70,24 @@ def md_to_html(md):
     return "".join(out)
 
 
-def main():
-    args = [a for a in sys.argv[1:] if a != "--no-push"]
-    push = "--no-push" not in sys.argv[1:]
-    if not args:
-        sys.exit("usage: kindle-add <url> [--no-push]")
-    url = args[0]
+def opt(args, name):
+    """Pop --name VALUE out of args, returning VALUE (or None)."""
+    if name in args:
+        i = args.index(name)
+        val = args[i + 1] if i + 1 < len(args) else None
+        del args[i:i + 2]
+        return val
+    return None
 
+
+def from_url(url):
+    """Fetch + extract a web page -> (title, url, site, body_html)."""
     ensure_trafilatura()
     import trafilatura
 
     downloaded = trafilatura.fetch_url(url)
     if not downloaded:
         sys.exit("could not fetch: " + url)
-
     # extract as markdown (drops nav/ads/boilerplate), then -> clean reading HTML
     md = trafilatura.extract(
         downloaded, output_format="markdown",
@@ -88,11 +95,31 @@ def main():
     )
     if not md:
         sys.exit("could not extract article text from: " + url)
-    body_html = md_to_html(md)
     meta = trafilatura.extract_metadata(downloaded)
     title = (meta.title if meta and meta.title else url).strip()
     site = (meta.sitename if meta and meta.sitename else re.sub(r"^https?://(www\.)?", "", url).split("/")[0])
+    return title, url, site, md_to_html(md)
 
+
+def from_md(md, title, site, fallback="untitled note"):
+    """Markdown you already have -> (title, url, site, body_html).
+
+    Title precedence: explicit `title` > the document's leading '# H1' > fallback.
+    The saved page has no source URL.
+    """
+    md = md.strip()
+    if not md:
+        sys.exit("no text given")
+    # a leading '# H1' becomes the page title (which build.py renders) -- so when
+    # we adopt it, drop it from the body to avoid repeating it as a heading.
+    h1 = re.match(r"^#\s+(.*)\n?", md)
+    if h1 and not title:
+        title = h1.group(1).strip()
+        md = md[h1.end():].strip()
+    return title or fallback, "", site or "session", md_to_html(md or "_(empty)_")
+
+
+def publish(title, url, site, body_html, push):
     added = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     slug = slugify(title) + "-" + added[5:10].replace("-", "")  # title + MMDD, keeps it unique-ish
 
@@ -112,6 +139,33 @@ def main():
         print("pushed -> live at neves.cloud/kindle in ~1 min")
     else:
         print("built locally (not pushed)")
+
+
+def main():
+    args = sys.argv[1:]
+    push = "--no-push" not in args
+    args = [a for a in args if a != "--no-push"]
+
+    use_stdin = "--stdin" in args
+    if use_stdin:
+        args.remove("--stdin")
+    title = opt(args, "--title")
+    site = opt(args, "--site")
+    md_file = opt(args, "--md")
+
+    if use_stdin:
+        title, url, site, body_html = from_md(sys.stdin.read(), title, site)
+    elif md_file:
+        with open(md_file, encoding="utf-8") as f:
+            md = f.read()
+        stem = os.path.splitext(os.path.basename(md_file))[0]
+        title, url, site, body_html = from_md(md, title, site, fallback=stem)
+    elif args:
+        title, url, site, body_html = from_url(args[0])
+    else:
+        sys.exit("usage: kindle-add <url> | --stdin --title T | --md FILE  [--site S] [--no-push]")
+
+    publish(title, url, site, body_html, push)
 
 
 if __name__ == "__main__":
